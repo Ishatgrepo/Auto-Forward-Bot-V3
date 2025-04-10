@@ -113,20 +113,41 @@ class Database:
         return default 
        
     async def add_bot(self, datas):
-       if not await self.is_bot_exist(datas['user_id']):
-          await self.bot.insert_one(datas)
-    
-    async def remove_bot(self, user_id):
-       await self.bot.delete_many({'user_id': int(user_id)})
-      
-    async def get_bot(self, user_id: int):
-       bot = await self.bot.find_one({'user_id': user_id})
-       return bot if bot else None
-                                          
-    async def is_bot_exist(self, user_id):
-       bot = await self.bot.find_one({'user_id': user_id})
-       return bool(bot)
-                                          
+        # Add a new bot to the user's list of bots
+        user_id = datas['user_id']
+        existing_bots = await self.bot.find_one({'user_id': user_id})
+        if not existing_bots:
+            await self.bot.insert_one({'user_id': user_id, 'bots': [datas]})
+        else:
+            await self.bot.update_one(
+                {'user_id': user_id},
+                {'$push': {'bots': datas}}
+            )
+
+    async def remove_bot(self, user_id, bot_id):
+        # Remove a specific bot by bot_id
+        await self.bot.update_one(
+            {'user_id': user_id},
+            {'$pull': {'bots': {'id': bot_id}}}
+        )
+
+    async def get_bots(self, user_id):
+        # Retrieve all bots for a user
+        bots_data = await self.bot.find_one({'user_id': user_id})
+        return bots_data['bots'] if bots_data and 'bots' in bots_data else []
+
+    async def is_bot_exist(self, user_id, bot_id):
+        # Check if a specific bot exists for the user
+        bots = await self.get_bots(user_id)
+        return any(bot['id'] == bot_id for bot in bots)
+
+    async def total_users_bots_count(self):
+        # Update to count total bots across all users
+        users_count = await self.col.count_documents({})
+        bots_data = await self.bot.find({}).to_list(None)
+        bots_count = sum(len(data['bots']) for data in bots_data if 'bots' in data)
+        return users_count, bots_count
+
     async def in_channel(self, user_id: int, chat_id: int) -> bool:
        channel = await self.chl.find_one({"user_id": int(user_id), "chat_id": int(chat_id)})
        return bool(channel)

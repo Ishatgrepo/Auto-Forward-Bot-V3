@@ -17,48 +17,70 @@ async def settings(client, message):
     
 @Client.on_callback_query(filters.regex(r'^settings'))
 async def settings_query(bot, query):
-  user_id = query.from_user.id
-  i, type = query.data.split("#")
-  buttons = [[InlineKeyboardButton('↩ Back', callback_data="settings#main")]]
-  
-  if type=="main":
-     await query.message.edit_text(
-       "<b>change your settings as your wish</b>",
-       reply_markup=main_buttons())
-       
-  elif type=="bots":
-     buttons = [] 
-     _bot = await db.get_bot(user_id)
-     if _bot is not None:
-        buttons.append([InlineKeyboardButton(_bot['name'],
-                         callback_data=f"settings#editbot")])
-     else:
-        buttons.append([InlineKeyboardButton('✚ Add bot ✚', 
-                         callback_data="settings#addbot")])
-        buttons.append([InlineKeyboardButton('✚ Add User bot ✚', 
-                         callback_data="settings#adduserbot")])
-     buttons.append([InlineKeyboardButton('↩ Back', 
-                      callback_data="settings#main")])
-     await query.message.edit_text(
-       "<b><u>My Bots</b></u>\n\n<b>You can manage your bots in here</b>",
-       reply_markup=InlineKeyboardMarkup(buttons))
-  
-  elif type=="addbot":
-     await query.message.delete()
-     bot = await CLIENT.add_bot(bot, query)
-     if bot != True: return
-     await query.message.reply_text(
-        "<b>bot token successfully added to db</b>",
-        reply_markup=InlineKeyboardMarkup(buttons))
-  
-  elif type=="adduserbot":
-     await query.message.delete()
-     user = await CLIENT.add_session(bot, query)
-     if user != True: return
-     await query.message.reply_text(
-        "<b>session successfully added to db</b>",
-        reply_markup=InlineKeyboardMarkup(buttons))
-      
+    user_id = query.from_user.id
+    i, type = query.data.split("#")
+    buttons = [[InlineKeyboardButton('↩ Back', callback_data="settings#main")]]
+
+    if type == "bots":
+        buttons = []
+        bots = await db.get_bots(user_id)
+        if bots:
+            for _bot in bots:
+                buttons.append([
+                    InlineKeyboardButton(_bot['name'], callback_data=f"settings#editbot_{_bot['id']}")
+                ])
+        buttons.append([InlineKeyboardButton('✚ Add Bot ✚', callback_data="settings#addbot")])
+        buttons.append([InlineKeyboardButton('✚ Add User Bot ✚', callback_data="settings#adduserbot")])
+        buttons.append([InlineKeyboardButton('↩ Back', callback_data="settings#main")])
+        await query.message.edit_text(
+            "<b><u>My Bots</b></u>\n\n<b>You can manage your bots here. Add multiple bots to forward messages!</b>",
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+
+    elif type == "addbot":
+        await query.message.delete()
+        bot_added = await CLIENT.add_bot(bot, query)
+        if bot_added != True:
+            return
+        await query.message.reply_text(
+            "<b>Bot token successfully added to db</b>",
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+
+    elif type == "adduserbot":
+        await query.message.delete()
+        user_added = await CLIENT.add_session(bot, query)
+        if user_added != True:
+            return
+        await query.message.reply_text(
+            "<b>User session successfully added to db</b>",
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+
+    elif type.startswith("editbot"):
+        bot_id = int(type.split("_")[1])
+        bots = await db.get_bots(user_id)
+        _bot = next((b for b in bots if b['id'] == bot_id), None)
+        if not _bot:
+            return await query.message.edit_text("Bot not found!")
+        TEXT = Translation.BOT_DETAILS if _bot['is_bot'] else Translation.USER_DETAILS
+        buttons = [
+            [InlineKeyboardButton('❌ Remove ❌', callback_data=f"settings#removebot_{bot_id}")],
+            [InlineKeyboardButton('↩ Back', callback_data="settings#bots")]
+        ]
+        await query.message.edit_text(
+            TEXT.format(_bot['name'], _bot['id'], _bot['username']),
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+
+    elif type.startswith("removebot"):
+        bot_id = int(type.split("_")[1])
+        await db.remove_bot(user_id, bot_id)
+        await query.message.edit_text(
+            "<b>Successfully removed bot</b>",
+            reply_markup=InlineKeyboardMarkup(buttons)
+        )
+        
   elif type=="channels":
      buttons = []
      channels = await db.get_user_channels(user_id)

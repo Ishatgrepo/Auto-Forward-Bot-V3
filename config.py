@@ -9,8 +9,8 @@ class Config:
     DATABASE_NAME = environ.get("DATABASE_NAME", "forward-bot")
     BOT_OWNER_ID = [int(id) for id in environ.get("BOT_OWNER_ID", '6964148334').split()]
 
-class temp(object): 
-    lock = {}
+class temp(object):
+    lock = {}  # Now bot-specific
     CANCEL = {}
     forwardings = 0
     BANNED_USERS = []

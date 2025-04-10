@@ -5,8 +5,8 @@ Advance Telegram Bot that can work as Message/Files Forwarder from Restricted or
 ## What can this bot do
 - Forward public/private channel messages for private user login needed as forward method
 - Save/clone individual post by its post link
-- Can save multiple post link via `batch` command up to 10K
-
+- Can save multiple post links via `batch` command up to 10K
+- Support multiple bots for simultaneous forwarding tasks
 ## Deployment Methods
 
 ### VPS Deployment
